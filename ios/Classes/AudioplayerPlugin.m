@@ -27,6 +27,7 @@ static NSString *m_AlbumName=@"";
 -(void)onStart;
 -(void)onTimeInterval:(CMTime)time;
 -(void)interruptionNotificationHandler:(NSNotification*)notification;
+
 @end
 
 @implementation AudioplayerPlugin
@@ -36,12 +37,13 @@ NSString *lastUrl;
 BOOL lastMode;
 BOOL isLoading = false;
 BOOL isPlaying = false;
+BOOL isInterupted =false;
 NSMutableSet *observers;
 NSMutableSet *timeobservers;
 FlutterMethodChannel *_channel;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-    
+ 
     FlutterMethodChannel* channel = [FlutterMethodChannel
                                      methodChannelWithName:CHANNEL_NAME
                                      binaryMessenger:[registrar messenger]];
@@ -49,7 +51,7 @@ FlutterMethodChannel *_channel;
     [registrar addMethodCallDelegate:instance channel:channel];
     _channel = channel;
     [AudioplayerPlugin remoteControlEventHandler];
-   
+
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -132,11 +134,10 @@ FlutterMethodChannel *_channel;
                                                                           [_channel invokeMethod:@"audio.onComplete" arguments:nil];
                                                                       }];
         [observers addObject:anobserver];
-        
+
         // on phone call
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(interruptionNotificationHandler:) name:AVAudioSessionInterruptionNotification object:nil];
- 
-        
+
         if (player) {
             [player replaceCurrentItemWithPlayerItem:playerItem];
         } else {
@@ -221,27 +222,7 @@ FlutterMethodChannel *_channel;
     [playerItem seekToTime:time];
 }
 
-//on phone call
-- (void)interruptionNotificationHandler:(NSNotification*)notification
-{
-    NSDictionary *interuptionDict = notification.userInfo;
-    NSString *type = [NSString stringWithFormat:@"%@", [interuptionDict valueForKey:AVAudioSessionInterruptionTypeKey]];
-    NSUInteger interuptionType = [type integerValue];
-    
-    if (interuptionType == AVAudioSessionInterruptionTypeBegan) {
-        if(isPlaying)
-        {
-            [self pause];
-        }
-        //NSLog(@"AVAudioSessionInterruptionTypeBegan");
-    }else if (interuptionType == AVAudioSessionInterruptionTypeEnded) {
-        //NSLog(@"AVAudioSessionInterruptionTypeEnded");
-        if(!isPlaying){
-            [self resume];
-        }
-        
-    }
-}
+
 
 
 + (void)configNowPlayingInfoCenter
@@ -333,7 +314,29 @@ FlutterMethodChannel *_channel;
     }];
 }
 
-
+//on phone call
+- (void)interruptionNotificationHandler:(NSNotification*)notification
+{
+    NSDictionary *interuptionDict = notification.userInfo;
+    NSString *type = [NSString stringWithFormat:@"%@", [interuptionDict valueForKey:AVAudioSessionInterruptionTypeKey]];
+    NSUInteger interuptionType = [type integerValue];
+    
+    if (interuptionType == AVAudioSessionInterruptionTypeBegan) {
+        if(isPlaying)
+        {
+            isInterupted=true;
+            [self pause];
+        }
+        //NSLog(@"AVAudioSessionInterruptionTypeBegan");
+    }else if (interuptionType == AVAudioSessionInterruptionTypeEnded) {
+        //NSLog(@"AVAudioSessionInterruptionTypeEnded");
+        if(!isPlaying && isInterupted){
+            isInterupted=false;
+            [self resume];
+        }
+        
+    }
+}
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
                       ofObject:(id)object
@@ -341,7 +344,7 @@ FlutterMethodChannel *_channel;
                        context:(void *)context {
     if ([keyPath isEqualToString:@"player.currentItem.status"]) {
         if ([[player currentItem] status] == AVPlayerItemStatusReadyToPlay) {
-            [self onStart];
+            //[self onStart];
         } else if ([[player currentItem] status] == AVPlayerItemStatusFailed) {
             [_channel invokeMethod:@"audio.onError" arguments:@[(player.currentItem.error.localizedDescription)]];
         }
@@ -353,6 +356,7 @@ FlutterMethodChannel *_channel;
                               context:context];
     }
 }
+
 
 - (void)dealloc {
     for (id ob in timeobservers) {

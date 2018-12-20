@@ -125,6 +125,10 @@ class AudioPlayer {
         _playerStateController.add(AudioPlayerState.PLAYING);
         _duration = new Duration(milliseconds: call.arguments);
         break;
+      case "audio.onResume":
+        _state = AudioPlayerState.PLAYING;
+        _playerStateController.add(AudioPlayerState.PLAYING);
+        break;
       case "audio.onPause":
         _state = AudioPlayerState.PAUSED;
         _playerStateController.add(AudioPlayerState.PAUSED);
