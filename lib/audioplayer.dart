@@ -75,6 +75,10 @@ class AudioPlayer {
         'name' : name,
         'albumName':albumName
       });
+
+  /// Pause the setCover file.
+  Future<void> setCover(String cover) async => await _channel.invokeMethod('setcover',{"filepath":cover});
+
   /// Pause the currently playing stream.
   Future<void> pause() async => await _channel.invokeMethod('pause');
 

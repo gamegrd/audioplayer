@@ -22,22 +22,27 @@ import android.os.Build;
 public class AudioplayerPlugin implements MethodCallHandler {
   private static final String ID = "bz.rxla.flutter/audio";
 
-  private final MethodChannel channel;
-  private final AudioManager am;
-  private final Handler handler = new Handler();
+  private  MethodChannel channel;
+  private  AudioManager am;
+  private  Handler handler = new Handler();
   private MediaPlayer mediaPlayer;
 
 
   public static void registerWith(Registrar registrar) {
+    /*
     final MethodChannel channel = new MethodChannel(registrar.messenger(), ID);
     channel.setMethodCallHandler(new AudioplayerPlugin(registrar, channel));
+    */
   }
 
   private AudioplayerPlugin(Registrar registrar, MethodChannel channel) {
+      /*
     this.channel = channel;
     channel.setMethodCallHandler(this);
     Context context = registrar.context().getApplicationContext();
     this.am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+    */
+
   }
 
 
@@ -53,6 +58,7 @@ public class AudioplayerPlugin implements MethodCallHandler {
           //长时间丢失焦点
           Log.d(TAG, "AUDIOFOCUS_LOSS");
           //释放焦点
+          stop();
           am.abandonAudioFocus(mAudioFocusChange);
           channel.invokeMethod("audio.AUDIOFOCUS_LOSS", null);
           break;
@@ -143,15 +149,16 @@ public class AudioplayerPlugin implements MethodCallHandler {
           mediaPlayer = new MediaPlayer();
           am.requestAudioFocus(mAudioFocusChange, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
 
-
-          AudioAttributes audioAttribute = new AudioAttributes.Builder()
-              .setUsage(AudioAttributes.USAGE_MEDIA)
-              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-              .build();
-
-          mediaPlayer.setAudioAttributes(audioAttribute);
-          //mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-
+          AudioAttributes audioAttribute = null;
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+              audioAttribute = new AudioAttributes.Builder()
+                  .setUsage(AudioAttributes.USAGE_MEDIA)
+                  .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                  .build();
+              mediaPlayer.setAudioAttributes(audioAttribute);
+          }else{
+              mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+          }
 
           channel.invokeMethod("audio.onLoading",null);
 
